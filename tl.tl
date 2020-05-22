@@ -4458,6 +4458,10 @@ function tl.type_check(ast: Node, opts: TypeCheckOptions): {Error}, {Error}, Typ
             end
             table.insert(expects, tostring(#f.args or 0))
             local va = is_vararg(f)
+            -- 确保参数传递和函数的数量一致，tl 之前的做法是小于等于函数参数数量就可以
+            if not va and #args ~= #f.args then
+               node_error(node, "wrong number of arguments (given " .. #args .. ", expects " .. table.concat(expects, " or ") .. ")")
+            end
             if #args == (#f.args or 0) or (va and #args > #f.args) then
                local matched, errs = try_match_func_args(node, f, args, is_method, argdelta)
                if matched then
@@ -5196,8 +5200,12 @@ function tl.type_check(ast: Node, opts: TypeCheckOptions): {Error}, {Error}, Typ
          end
       },
       ["local_declaration"] = {
+
          after = function(node: Node, children: {Type}): Type
             local vals: {Type} = get_assignment_values(children[2], #node.vars)
+            if #node.vars ~= #vals then
+               node_error(node, "local assignment number in declaration do not match")
+            end
             for i, var in ipairs(node.vars) do
                local decltype = node.decltype and node.decltype[i]
                local infertype = vals and vals[i]
@@ -5235,6 +5243,9 @@ function tl.type_check(ast: Node, opts: TypeCheckOptions): {Error}, {Error}, Typ
       ["global_declaration"] = {
          after = function(node: Node, children: {Type}): Type
             local vals: {Type} = get_assignment_values(children[2], #node.vars)
+            if #node.vars ~= #vals then
+               node_error(node, "global assignment number in declaration do not match")
+            end
             for i, var in ipairs(node.vars) do
                local decltype = node.decltype and node.decltype[i]
                local infertype = vals and vals[i]
@@ -5280,6 +5291,9 @@ function tl.type_check(ast: Node, opts: TypeCheckOptions): {Error}, {Error}, Typ
       ["assignment"] = {
          after = function(node: Node, children: {Type}): Type
             local vals: {Type} = get_assignment_values(children[2], #children[1])
+            if #node.vars ~= #vals then
+               node_error(node, "assignment number in declaration do not match")
+            end
             local exps = flatten_list(vals)
             for i, vartype in ipairs(children[1]) do
                local varnode = node.vars[i]
@@ -5466,9 +5480,9 @@ function tl.type_check(ast: Node, opts: TypeCheckOptions): {Error}, {Error}, Typ
             if nrets > 0 then
                vatype = rets[nrets].is_va and rets[nrets]
             end
-
-            if #children[1] > nrets and (not lax) and not vatype then
-               node_error(node, "excess return values, expected " .. #rets .. " got " .. #children[1])
+            -- 确保 return 后面参数数量和函数标注一致，之前 tl 的做法是小于等于标注就可以
+            if #children[1] ~= nrets and (not lax) and not vatype then
+               node_error(node, "return values number mismatch, expected " .. #rets .. " got " .. #children[1])
             end
 
             for i = 1, #children[1] do
