@@ -4459,9 +4459,11 @@ function tl.type_check(ast, opts)
             table.insert(expects, tostring(#f.args or 0))
             local va = is_vararg(f)
 
-            if not va and #args ~= #f.args then
-               node_error(node, "wrong number of arguments (given " .. #args .. ", expects " .. table.concat(expects, " or ") .. ")")
-            end
+
+
+
+
+
             if #args == (#f.args or 0) or (va and #args > #f.args) then
                local matched, errs = try_match_func_args(node, f, args, is_method, argdelta)
                if matched then

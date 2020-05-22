@@ -4459,9 +4459,11 @@ function tl.type_check(ast: Node, opts: TypeCheckOptions): {Error}, {Error}, Typ
             table.insert(expects, tostring(#f.args or 0))
             local va = is_vararg(f)
             -- 确保参数传递和函数的数量一致，tl 之前的做法是小于等于函数参数数量就可以
-            if not va and #args ~= #f.args then
+            -- 部分函数就是可变参数，暂不检查
+            --[[if not va and #args ~= #f.args then
                node_error(node, "wrong number of arguments (given " .. #args .. ", expects " .. table.concat(expects, " or ") .. ")")
             end
+            --]]
             if #args == (#f.args or 0) or (va and #args > #f.args) then
                local matched, errs = try_match_func_args(node, f, args, is_method, argdelta)
                if matched then
